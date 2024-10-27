@@ -1,0 +1,19 @@
+langchain
+guardrails-ai
+pydantic
+typer[all]
+python-dotenv
+openai
+gradio==5.0.1
+faiss-cpu
+langchain-community
+langchain-openai
+langdetect
+googletrans
+youtube-transcript-api
+google-api-python-client
+deep-translator
+
+# dev dependencies
+watchdog
+jupytext

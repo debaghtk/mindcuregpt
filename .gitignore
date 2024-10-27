@@ -1,0 +1,6 @@
+.env
+*.ipynb
+transcriptions-local/
+transcriptions/
+.cursorignore
+failed_videos.txt
