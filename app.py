@@ -29,45 +29,55 @@ voice_id = os.getenv("ELEVENLABS_VOICE_ID")
 
 # Load and process the transcripts
 documents = []
-folder_path = "transcriptions-local" if os.getenv("ENVIRONMENT") == "local" else "transcriptions"
+folder_path = "transcriptions" if os.getenv("ENVIRONMENT") == "local" else "transcriptions"
 
-for filename in os.listdir(folder_path):
-    if filename.endswith(".txt"):
-        file_path = os.path.join(folder_path, filename)
-        with open(file_path, "r", encoding='utf-8') as f:
-            content = f.read()
+def process_transcript_file(file_path):
+    with open(file_path, "r", encoding='utf-8') as f:
+        content = f.read()
 
-        # Extract video ID from filename
-        base_name = os.path.splitext(filename)[0]
-        video_id = base_name.replace("_transcription", "")
-        youtube_link_base = f"https://www.youtube.com/watch?v={video_id}"
+    # Extract video ID from filename
+    base_name = os.path.splitext(os.path.basename(file_path))[0]
+    video_id = base_name.replace("_transcription", "")
+    youtube_link_base = f"https://www.youtube.com/watch?v={video_id}"
 
-        # Parse the transcript content to extract entries with timestamps
-        lines = content.splitlines()
-        for line in lines:
-            # Updated regex to match your transcript format
-            match = re.match(r"^\[(\d+\.\d+) - (\d+\.\d+)\]\s*(.*)$", line)
-            if match:
-                start_time = float(match.group(1))
-                end_time = float(match.group(2))
-                text = match.group(3)
-                # Create a Document for each transcript entry
-                entry = Document(
-                    page_content=text,
-                    metadata={
-                        "youtube_link": youtube_link_base,
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "timestamp_link": f"{youtube_link_base}&t={int(start_time)}"
-                    }
-                )
-                documents.append(entry)
-            else:
-                # Handle other lines if needed
-                continue
+    # Parse the transcript content to extract entries with timestamps
+    lines = content.splitlines()
+    file_documents = []
+    for line in lines:
+        # Updated regex to match your transcript format
+        match = re.match(r"^\[(\d+\.\d+) - (\d+\.\d+)\]\s*(.*)$", line)
+        if match:
+            start_time = float(match.group(1))
+            end_time = float(match.group(2))
+            text = match.group(3)
+            # Create a Document for each transcript entry
+            entry = Document(
+                page_content=text,
+                metadata={
+                    "youtube_link": youtube_link_base,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "timestamp_link": f"{youtube_link_base}&t={int(start_time)}",
+                    "channel": os.path.basename(os.path.dirname(file_path))  # Add channel name from folder
+                }
+            )
+            file_documents.append(entry)
+    return file_documents
+
+# Recursively walk through all subdirectories
+for root, dirs, files in os.walk(folder_path):
+    for filename in files:
+        if filename.endswith(".txt"):
+            file_path = os.path.join(root, filename)
+            try:
+                file_documents = process_transcript_file(file_path)
+                documents.extend(file_documents)
+                print(f"Processed {file_path}: {len(file_documents)} entries")
+            except Exception as e:
+                print(f"Error processing {file_path}: {str(e)}")
 
 # Check documents length
-print(f"Number of documents loaded: {len(documents)}")
+print(f"Total number of documents loaded: {len(documents)}")
 
 # Continue with splitting documents if necessary
 text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
